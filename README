@@ -1,0 +1,12 @@
+Java client for Lulu publishing API.
+
+Dependencies:
+
+slf4j
+logback
+junit
+jackson-core-asl
+jackson-mapper-asl
+httpclient (org.apache.httpcomponents)
+httpmime (org.apache.httpcomponents)
+
