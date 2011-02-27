@@ -365,10 +365,7 @@ public class PublishApiClient {
 
     private <T> ApiResponse performApiCall(String call, NameValuePair[] urlParameters, Class<T> clazz) throws PublishApiException {
         if (LOG.isInfoEnabled()) {
-            LOG.info("API call to <".concat(call).concat("> with parameters: "));
-            for (NameValuePair pair : urlParameters) {
-                LOG.info("PARAM: '" + pair.getName() + "': '" + pair.getValue() + "'");
-            }
+            LOG.info("API call to <".concat(call).concat(">"));
         }
 
         PostMethod postMethod = new PostMethod(call);
