@@ -27,8 +27,7 @@ public class PublishApiConfiguration {
      * This file is "publishapi.properties" in the user's home directory.
      * @throws java.io.IOException if a parseable properties file does not exist in the home directory
      */
-    public PublishApiConfiguration() throws IOException {
-        this(System.getProperty("user.home").concat("/publishapi.properties"));
+    public PublishApiConfiguration() {
     }
 
     /**
