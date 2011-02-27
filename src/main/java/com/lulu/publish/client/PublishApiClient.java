@@ -151,7 +151,7 @@ public class PublishApiClient {
             return project;
         }
         error = (ErrorResponse) response.getPayload();
-        throw new PublishApiException("Failed to create the project.");
+        throw new PublishApiException("Failed to create the project:  " + error.getErrorValue());
     }
 
     /**
