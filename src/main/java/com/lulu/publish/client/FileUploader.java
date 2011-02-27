@@ -71,6 +71,10 @@ public class FileUploader {
         if (status == HttpStatus.SC_OK) {
             result = true;
         }
+        if (LOG.isInfoEnabled()) {
+            LOG.info("Done uploading file");
+        }
+
         filePost.releaseConnection();
         return result;
     }
