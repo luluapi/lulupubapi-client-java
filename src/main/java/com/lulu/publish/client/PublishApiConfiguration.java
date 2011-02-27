@@ -17,9 +17,6 @@ public class PublishApiConfiguration {
     private String apiKey;
     private String email;
     private String password;
-    private String authenticationServer;
-    private String apiServer;
-    private String uploadServer;
 
     /**
      * Construct the client with the default configuration file.
@@ -45,9 +42,6 @@ public class PublishApiConfiguration {
         apiKey = properties.getProperty("authentication.apiKey", "");
         email = properties.getProperty("authentication.email", "");
         password = properties.getProperty("authentication.password", "");
-        authenticationServer = properties.getProperty("server.authentication", "");
-        apiServer = properties.getProperty("server.publishApi", "");
-        uploadServer = properties.getProperty("server.upload", "");
     }
 
 
@@ -57,22 +51,6 @@ public class PublishApiConfiguration {
 
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
-    }
-
-    public String getApiServer() {
-        return apiServer;
-    }
-
-    public void setApiServer(String apiServer) {
-        this.apiServer = apiServer;
-    }
-
-    public String getAuthenticationServer() {
-        return authenticationServer;
-    }
-
-    public void setAuthenticationServer(String authenticationServer) {
-        this.authenticationServer = authenticationServer;
     }
 
     public String getEmail() {
@@ -91,23 +69,12 @@ public class PublishApiConfiguration {
         this.password = password;
     }
 
-    public String getUploadServer() {
-        return uploadServer;
-    }
-
-    public void setUploadServer(String uploadServer) {
-        this.uploadServer = uploadServer;
-    }
-
     @Override
     public String toString() {
         return "PublishApiConfiguration{"
                 + "apiKey='" + apiKey + '\''
                 + ", email='" + email + '\''
                 + ", password='" + password + '\''
-                + ", authenticationServer='" + authenticationServer + '\''
-                + ", apiServer='" + apiServer + '\''
-                + ", uploadServer='" + uploadServer + '\''
                 + '}';
     }
 }

@@ -46,11 +46,13 @@ public class PublishApiClient {
     private String apiKey;
     private String email;
     private String password;
-    private String authenticationEndpoint;
-    private String apiUrlTemplate;
-    private String apiUploadUrl;
+    private String authenticationEndpoint = "https://www.lulu.com/account/endpoints/authenticator.php";
+    private String apiUrlTemplate = "https://apps.lulu.com/api/publish/v1/%s";
+    private String apiUploadUrl = "https://pubapp.lulu.com/api/publish/v1/upload";
     private String authenticationToken;
 
+
+    
     private ErrorResponse error;
 
     /**
@@ -86,9 +88,6 @@ public class PublishApiClient {
         apiKey = configuration.getApiKey();
         email = configuration.getEmail();
         password = configuration.getPassword();
-        authenticationEndpoint = "https://".concat(configuration.getAuthenticationServer()).concat("/account/endpoints/authenticator.php");
-        apiUrlTemplate = "https://".concat(configuration.getApiServer()).concat("/api/publish/v1/%s");
-        apiUploadUrl = "https://".concat(configuration.getUploadServer()).concat("/api/publish/v1/upload");
 
         ProtocolRegistrar.registerTrustAllProtocolSocketFactory();
     }
