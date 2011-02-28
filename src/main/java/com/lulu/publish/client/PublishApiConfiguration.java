@@ -74,7 +74,6 @@ public class PublishApiConfiguration {
         return "PublishApiConfiguration{"
                 + "apiKey='" + apiKey + '\''
                 + ", email='" + email + '\''
-                + ", password='" + password + '\''
                 + '}';
     }
 }
