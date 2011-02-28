@@ -50,8 +50,6 @@ public class PublishApiClient {
     private String apiUrlTemplate = "https://apps.lulu.com/api/publish/v1/%s";
     private String apiUploadUrl = "https://pubapp.lulu.com/api/publish/v1/upload";
     private String authenticationToken;
-
-
     
     private ErrorResponse error;
 
