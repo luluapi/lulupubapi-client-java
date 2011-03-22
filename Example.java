@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,9 +11,13 @@ import com.lulu.publish.model.AccessType;
 import com.lulu.publish.model.Author;
 import com.lulu.publish.model.Bibliography;
 import com.lulu.publish.model.BindingType;
+import com.lulu.publish.model.Dimensions;
 import com.lulu.publish.model.DistributionChannel;
 import com.lulu.publish.model.FileDetails;
 import com.lulu.publish.model.FileInfo;
+import com.lulu.publish.model.JobFile;
+import com.lulu.publish.model.JobManifest;
+import com.lulu.publish.model.JobStatus;
 import com.lulu.publish.model.PaperType;
 import com.lulu.publish.model.PhysicalAttributes;
 import com.lulu.publish.model.Pricing;
@@ -54,7 +59,7 @@ public class Example {
         cover.setMimetype(FileDetails.MIME_TYPE_PDF);
         covers.add(cover);
         fileInfo.setCover(covers);
-
+        
         Project project = createProjectStructure();
         project.setFileInfo(fileInfo);
 
