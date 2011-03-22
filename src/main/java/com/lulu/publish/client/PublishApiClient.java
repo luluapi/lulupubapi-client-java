@@ -9,8 +9,10 @@ import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+
 import javax.net.ssl.HttpsURLConnection;
 
+import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.NameValuePair;
@@ -20,10 +22,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.lulu.publish.model.FileContext;
+import com.lulu.publish.model.ConversionManifest;
+import com.lulu.publish.model.ConversionStatus;
 import com.lulu.publish.model.Project;
 import com.lulu.publish.response.ApiResponse;
 import com.lulu.publish.response.AuthenticationResponse;
 import com.lulu.publish.response.BaseCostResponse;
+import com.lulu.publish.response.ConversionResponse;
 import com.lulu.publish.response.CreateResponse;
 import com.lulu.publish.response.ErrorResponse;
 import com.lulu.publish.response.ListResponse;
@@ -52,7 +57,7 @@ public class PublishApiClient {
     private String authenticationToken;
     
     private ErrorResponse error;
-
+    
     /**
      * Construct the client with the default configuration file.
      * <p/>
@@ -344,6 +349,106 @@ public class PublishApiClient {
         } catch (IOException e) {
             throw new PublishApiException("Unable to download indicated file.", e);
         }
+    }
+    
+    /**
+     * Converts source files
+     * 
+     * @param manifest the manifest for conversion
+     * @return the id of conversion
+     * @throws PublishApiException if an unexpected error occurs
+     */
+    public Long convert(ConversionManifest manifest) throws PublishApiException {
+        assertAuthenticated();
+        
+        String call = String.format(apiUrlTemplate, "conversion").concat("?api_key=").concat(apiKey).concat("&auth_token=").concat(authenticationToken);
+        if (LOG.isInfoEnabled()) {
+            LOG.info("API call to <".concat(call).concat(">"));
+        }
+        
+        PostMethod postMethod = new PostMethod(call);
+        postMethod.addRequestHeader(new Header("Content-Type", "application/json"));
+        postMethod.addRequestHeader(new Header("Accept", "application/json"));
+        postMethod.setRequestBody(serializeManifest(manifest));
+        
+        HttpClient client = new HttpClient();
+        String output = "";
+        ConversionResponse response;
+        try {
+            int returnCode = client.executeMethod(postMethod);
+            output = StreamUtils.inputStreamToString(postMethod.getResponseBodyAsStream());
+            if (LOG.isInfoEnabled()) {
+                LOG.info("API call response: " + output);
+            }
+            response = JsonMapper.fromJson(output, ConversionResponse.class);
+            if (returnCode == HttpsURLConnection.HTTP_OK) { 
+                return response.getConversion().getConversionId();
+            } else {
+                throw new PublishApiException("Failed to convert the files of the project:  " + response.getDetails());
+            }
+
+        } catch (IOException e) {
+            throw new PublishApiException("Unexpected error calling API endpoint.", e);
+        } catch (JsonMapperException e) {
+            throw new PublishApiException("API endpoint returned unparseable response: " + output, e);
+        } finally {
+            postMethod.releaseConnection();
+        }
+        
+    }
+    
+    private String serializeManifest(ConversionManifest manifest) throws PublishApiException {
+        String manifestJson;
+        try {
+            manifestJson = JsonMapper.toJson(manifest);
+        } catch (JsonMapperException e) {
+            throw new PublishApiException("Could not serialize manifest.", e);
+        }
+        return manifestJson;
+    }
+    
+    /**
+     * Determines status of conversion
+     * 
+     * @param jobId the id of conversion
+     * @return status
+     * @throws PublishApiException if an unexpected error occurs
+     */
+    public ConversionStatus convertStatus(Long jobId) throws PublishApiException {
+        
+        String call = String.format(apiUrlTemplate, String.format("conversion/%s", String.valueOf(jobId))).concat("?api_key=").concat(apiKey).concat(
+                "&auth_token=").concat(authenticationToken);
+        
+        if (LOG.isInfoEnabled()) {
+            LOG.info("API call to <".concat(call).concat(">"));
+        }
+
+        GetMethod getMethod = new GetMethod(call);
+        getMethod.addRequestHeader(new Header("Accept", "application/json"));
+        HttpClient client = new HttpClient();
+        String output = "";
+        ConversionResponse response;
+        try {
+            int returnCode = client.executeMethod(getMethod);
+            output = StreamUtils.inputStreamToString(getMethod.getResponseBodyAsStream());
+            if (LOG.isInfoEnabled()) {
+                LOG.info("API call response: " + output);
+            }
+            response = JsonMapper.fromJson(output, ConversionResponse.class);
+            
+            if (returnCode == HttpsURLConnection.HTTP_OK) { 
+                return response.getConversion().getStatus();
+            } else {
+                throw new PublishApiException("Failed to get the convertation status:  " + response.getDetails());
+            }
+        } catch (IOException e) {
+            throw new PublishApiException("Unexpected error calling API endpoint.", e);
+        } catch (JsonMapperException e) {
+            throw new PublishApiException("API endpoint returned unparseable response: " + output, e);
+        } finally {
+            getMethod.releaseConnection();
+        }
+        
     }
 
     private void assertAuthenticated() throws NotAuthenticatedException {
