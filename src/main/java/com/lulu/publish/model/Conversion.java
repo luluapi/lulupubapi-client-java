@@ -1,6 +1,7 @@
 package com.lulu.publish.model;
 
 import java.util.Date;
+import java.util.List;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
 
@@ -12,7 +13,8 @@ public class Conversion extends ConversionManifest {
     private Date conversionStartDate;
     private Date conversionEndDate;
     private Long outputFileId;
-    
+    private List<Notification> notifications;
+
     public Long getConversionId() {
         return conversionId;
     }
@@ -60,7 +62,7 @@ public class Conversion extends ConversionManifest {
     public void setOutputFileId(Long outputFileId) {
         this.outputFileId = outputFileId;
     }
-    
+
     @JsonIgnore
     public void setNotice(String notice) {
     }
@@ -69,17 +71,24 @@ public class Conversion extends ConversionManifest {
     public void setCustomField(String customField) {
     }
 
+    public List<Notification> getNotifications() {
+        return notifications;
+    }
+
+    public void setNotifications(List<Notification> notifications) {
+        this.notifications = notifications;
+    }
+
     @Override
     public String toString() {
-        return "Conversion {" 
-                + "conversionEndDate=\'" + conversionEndDate 
-                + "\', conversionId=\'" + conversionId 
-                + "\', conversionStartDate=\'" + conversionStartDate 
-                + "\', outputFileId=\'" + outputFileId 
-                + "\', status=\'" + status 
-                + "\', statusMessage=\'" + statusMessage 
-                + "}";
+        return "Conversion{"
+                + "conversionEndDate=" + conversionEndDate
+                + ", conversionId=" + conversionId
+                + ", status=" + status
+                + ", statusMessage='" + statusMessage + '\''
+                + ", conversionStartDate=" + conversionStartDate
+                + ", outputFileId=" + outputFileId
+                + ", notifications=" + notifications
+                + '}';
     }
-    
-
 }

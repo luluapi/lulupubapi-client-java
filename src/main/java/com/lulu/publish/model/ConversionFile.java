@@ -1,6 +1,7 @@
 package com.lulu.publish.model;
 
 import java.net.URI;
+import java.util.List;
 
 import org.codehaus.jackson.annotate.JsonIgnore;
 
@@ -19,7 +20,7 @@ public class ConversionFile {
     private String downloadEndDate;
     private String conversionStartDate;
     private String conversionEndDate;
-    
+    private List<Notification> notifications;
 
     public Long getConversionFileId() {
         return conversionFileId;
@@ -108,26 +109,34 @@ public class ConversionFile {
     public void setConversionEndDate(String conversionEndDate) {
         this.conversionEndDate = conversionEndDate;
     }
-    
+
     @JsonIgnore
     public void setNotice(String notice) {
     }
 
-    @Override
-    public String toString() {
-        return "ConversionFile {" 
-                + "conversionEndDate=\'" + conversionEndDate 
-                + "\', conversionFileId=\'" + conversionFileId 
-                + "\', conversionStartDate=\'" + conversionStartDate 
-                + "\', converterHostname=\'" + converterHostname 
-                + "\', downloadEndDate=\'" + downloadEndDate
-                + "\', downloadStartDate=\'" + downloadStartDate 
-                + "\', index=\'" + index 
-                + "\', mimeType=\'" + mimeType 
-                + "\', status=\'" + status
-                + "\', statusMessage=\'" + statusMessage 
-                + "\', uri=\'" + uri + 
-                "}";
+    public List<Notification> getNotifications() {
+        return notifications;
     }
 
+    public void setNotifications(List<Notification> notifications) {
+        this.notifications = notifications;
+    }
+
+    @Override
+    public String toString() {
+        return "ConversionFile{"
+                + "conversionEndDate='" + conversionEndDate + '\''
+                + ", conversionFileId=" + conversionFileId
+                + ", uri=" + uri
+                + ", index=" + index
+                + ", mimeType='" + mimeType + '\''
+                + ", status='" + status + '\''
+                + ", statusMessage='" + statusMessage + '\''
+                + ", converterHostname='" + converterHostname + '\''
+                + ", downloadStartDate='" + downloadStartDate + '\''
+                + ", downloadEndDate='" + downloadEndDate + '\''
+                + ", conversionStartDate='" + conversionStartDate + '\''
+                + ", notifications=" + notifications
+                + '}';
+    }
 }
