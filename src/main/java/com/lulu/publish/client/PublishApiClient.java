@@ -1,5 +1,6 @@
 package com.lulu.publish.client;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -9,30 +10,34 @@ import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
 import javax.net.ssl.HttpsURLConnection;
 
-import org.apache.commons.httpclient.Header;
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.NameValuePair;
-import org.apache.commons.httpclient.methods.GetMethod;
-import org.apache.commons.httpclient.methods.PostMethod;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.utils.URLEncodedUtils;
+import org.apache.http.entity.BasicHttpEntity;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.message.BasicNameValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.lulu.publish.model.FileContext;
+import com.lulu.publish.model.Conversion;
 import com.lulu.publish.model.ConversionManifest;
-import com.lulu.publish.model.ConversionStatus;
+import com.lulu.publish.model.FileContext;
 import com.lulu.publish.model.Project;
 import com.lulu.publish.response.ApiResponse;
 import com.lulu.publish.response.AuthenticationResponse;
 import com.lulu.publish.response.BaseCostResponse;
-import com.lulu.publish.response.ConversionResponse;
 import com.lulu.publish.response.CreateResponse;
 import com.lulu.publish.response.ErrorResponse;
 import com.lulu.publish.response.ListResponse;
 import com.lulu.publish.response.ProjectResponse;
+import com.lulu.publish.response.UploadResponse;
 import com.lulu.publish.response.UploadTokenResponse;
 import com.lulu.publish.util.JsonMapper;
 import com.lulu.publish.util.JsonMapperException;
@@ -51,19 +56,20 @@ public class PublishApiClient {
     private String apiKey;
     private String email;
     private String password;
-    private String authenticationEndpoint = "https://www.lulu.com/account/endpoints/authenticator.php";
-    private String apiUrlTemplate = "https://apps.lulu.com/api/publish/v1/%s";
-    private String apiUploadUrl = "https://pubapp.lulu.com/api/publish/v1/upload";
+    private String authenticationEndpoint = "https://www.jgore.lulu.com/account/endpoints/authenticator.php";
+    private String apiUrlTemplate = "https://apps.jgore.lulu.com/api/publish/v1/%s";
+    private String apiUploadUrl = "https://pubapp.jgore.lulu.com/api/publish/v1/upload";
     private String authenticationToken;
-    
+
     private ErrorResponse error;
-    
+    private HttpClient httpClient;
+
     /**
      * Construct the client with the default configuration file.
      * <p/>
      * This file is "publishapi.properties" in the user's home directory.
      *
-     * @throws IOException if a parseable properties file does not exist in the home directory
+     * @throws IOException if SSL context could not be initialized
      */
     public PublishApiClient() throws IOException {
         this(new PublishApiConfiguration());
@@ -73,7 +79,7 @@ public class PublishApiClient {
      * Construct with the specified configuration file.
      *
      * @param configFile properties file
-     * @throws IOException if the properties file could not be located or parsed
+     * @throws IOException if the properties file could not be located or parsed or if SSL context could not be initialized
      */
     public PublishApiClient(String configFile) throws IOException {
         this(new PublishApiConfiguration(configFile));
@@ -85,14 +91,17 @@ public class PublishApiClient {
      * Also sets up SSL to accept <b>all</b> certificates, even self-signed. This is not recommended for production use.
      *
      * @param configuration holder for configuration values
+     * @throws IOException if SSL context could not be initialized
      */
-    public PublishApiClient(PublishApiConfiguration configuration) {
+    public PublishApiClient(PublishApiConfiguration configuration) throws IOException {
         LOG.info(configuration.toString());
         apiKey = configuration.getApiKey();
         email = configuration.getEmail();
         password = configuration.getPassword();
 
-        ProtocolRegistrar.registerTrustAllProtocolSocketFactory();
+        httpClient = new DefaultHttpClient();
+//        httpClient.getParams().setParameter(CoreProtocolPNames.PROTOCOL_VERSION, HttpVersion.HTTP_1_1);
+        ProtocolRegistrar.registerTrustAllSslContextWithHttpClient(httpClient);
     }
 
     /**
@@ -284,21 +293,25 @@ public class PublishApiClient {
      * @param files collection of files
      * @throws FileNotFoundException if attempt is made to upload a non-existent file
      * @throws PublishApiException   if an unexpected error occurs
+     * @return uploaded files
      */
-    public void upload(Collection<File> files) throws PublishApiException, FileNotFoundException {
+    public UploadResponse upload(Collection<File> files) throws PublishApiException, FileNotFoundException {
         String uploadToken = requestUploadToken();
         try {
-            performUpload(files, uploadToken);
+            return performUpload(files, uploadToken);
         } catch (FileNotFoundException e) {
             throw e;
         } catch (IOException e) {
             throw new PublishApiException("Upload failed unexpectedly.", e);
+        } catch (JsonMapperException e) {
+            throw new PublishApiException("Upload failed unexpectedly.", e);
         }
     }
 
-    private void performUpload(Collection<File> files, String uploadToken) throws IOException {
+    private UploadResponse performUpload(Collection<File> files, String uploadToken) throws IOException, JsonMapperException {
         FileUploader uploader = new FileUploader(uploadToken, authenticationToken);
-        uploader.upload(apiUploadUrl, files.toArray(new File[files.size()]));
+        String response = uploader.upload(apiUploadUrl, files.toArray(new File[files.size()]));
+        return JsonMapper.fromJson(response, UploadResponse.class);
     }
 
     private String requestUploadToken() throws PublishApiException {
@@ -326,77 +339,77 @@ public class PublishApiClient {
     public void download(int contentId, FileContext fileContext, File outputLocation) throws PublishApiException {
         assertAuthenticated();
 
-        String downloadUrl = String.format(apiUrlTemplate,
-                "download/id/".concat(Integer.toString(contentId))
-                        .concat("/what/").concat(fileContext.toString())
-                        .concat("?api_key=").concat(apiKey)
-                        .concat("&auth_token=").concat(authenticationToken));
+        String downloadUrl = String.format(apiUrlTemplate, "download/id/" + Integer.toString(contentId) + "/what/" + fileContext.toString())
+                + "?" + URLEncodedUtils.format(generateParameters("api_key", apiKey, "auth_token", authenticationToken), "UTF-8");
         if (LOG.isInfoEnabled()) {
-            LOG.info("API call to <" + downloadUrl + ">");
+            LOG.info("API call to <{}>", downloadUrl);
         }
+
         try {
-            HttpClient httpClient = new HttpClient();
-            GetMethod getMethod = new GetMethod(downloadUrl);
-            int responseCode = httpClient.executeMethod(getMethod);
-            if (responseCode == HttpStatus.SC_OK) {
-                ReadableByteChannel rbc = Channels.newChannel(getMethod.getResponseBodyAsStream());
+            HttpGet httpGet = new HttpGet(downloadUrl);
+            HttpResponse httpResponse = httpClient.execute(httpGet);
+
+            int statusCode = httpResponse.getStatusLine().getStatusCode();
+            if (statusCode == HttpStatus.SC_OK) {
+                ReadableByteChannel rbc = Channels.newChannel(httpResponse.getEntity().getContent());
                 FileOutputStream fos = new FileOutputStream(outputLocation);
                 fos.getChannel().transferFrom(rbc, 0, TRANSFER_BLOCK_SIZE);
             } else {
-                LOG.info("Download failed with response: " + getMethod.getResponseBodyAsString());
-                throw new PublishApiException("Bad response code returned attempting to download file: " + responseCode);
+                throw new PublishApiException("Bad response code returned attempting to download file: " + statusCode);
             }
         } catch (IOException e) {
             throw new PublishApiException("Unable to download indicated file.", e);
         }
     }
-    
+
     /**
      * Converts source files
-     * 
+     *
      * @param manifest the manifest for conversion
      * @return the id of conversion
      * @throws PublishApiException if an unexpected error occurs
      */
     public Long convert(ConversionManifest manifest) throws PublishApiException {
         assertAuthenticated();
-        
-        String call = String.format(apiUrlTemplate, "conversion").concat("?api_key=").concat(apiKey).concat("&auth_token=").concat(authenticationToken);
+
+//        String call = String.format(apiUrlTemplate, "conversion")
+        String call = "http://jgore-workstation:8080/documentconverter/conversion"
+                + "?" + URLEncodedUtils.format(generateParameters("api_key", apiKey, "auth_token", authenticationToken), "UTF-8");
         if (LOG.isInfoEnabled()) {
-            LOG.info("API call to <".concat(call).concat(">"));
+            LOG.info("API call to <{}>", call);
         }
-        
-        PostMethod postMethod = new PostMethod(call);
-        postMethod.addRequestHeader(new Header("Content-Type", "application/json"));
-        postMethod.addRequestHeader(new Header("Accept", "application/json"));
-        postMethod.setRequestBody(serializeManifest(manifest));
-        
-        HttpClient client = new HttpClient();
+
+        HttpPost httpPost = new HttpPost(call);
+        httpPost.addHeader("Content-Type", "application/json");
+        httpPost.addHeader("Accept", "application/json");
+        httpPost.addHeader("Chunked", "false");
+
         String output = "";
-        ConversionResponse response;
+        Conversion conversion;
         try {
-            int returnCode = client.executeMethod(postMethod);
-            output = StreamUtils.inputStreamToString(postMethod.getResponseBodyAsStream());
+            BasicHttpEntity httpEntity = new BasicHttpEntity();
+            httpEntity.setContent(new ByteArrayInputStream(serializeManifest(manifest).getBytes("UTF-8")));
+            httpPost.setEntity(httpEntity);
+            HttpResponse httpResponse = httpClient.execute(httpPost);
+            int returnCode = httpResponse.getStatusLine().getStatusCode();
+            output = StreamUtils.inputStreamToString(httpResponse.getEntity().getContent());
             if (LOG.isInfoEnabled()) {
                 LOG.info("API call response: " + output);
             }
-            response = JsonMapper.fromJson(output, ConversionResponse.class);
-            if (returnCode == HttpsURLConnection.HTTP_OK) { 
-                return response.getConversion().getConversionId();
+            if (returnCode == HttpsURLConnection.HTTP_OK) {
+                conversion = JsonMapper.fromJson(output, Conversion.class);
+                return conversion.getConversionId();
             } else {
-                throw new PublishApiException("Failed to convert the files of the project:  " + response.getDetails());
+                throw new PublishApiException("Failed to convert the files of the project:  " + output);
             }
 
         } catch (IOException e) {
             throw new PublishApiException("Unexpected error calling API endpoint.", e);
         } catch (JsonMapperException e) {
             throw new PublishApiException("API endpoint returned unparseable response: " + output, e);
-        } finally {
-            postMethod.releaseConnection();
         }
-        
     }
-    
+
     private String serializeManifest(ConversionManifest manifest) throws PublishApiException {
         String manifestJson;
         try {
@@ -406,49 +419,47 @@ public class PublishApiClient {
         }
         return manifestJson;
     }
-    
+
     /**
      * Determines status of conversion
-     * 
+     *
      * @param jobId the id of conversion
      * @return status
      * @throws PublishApiException if an unexpected error occurs
      */
-    public ConversionStatus convertStatus(Long jobId) throws PublishApiException {
-        
-        String call = String.format(apiUrlTemplate, String.format("conversion/%s", String.valueOf(jobId))).concat("?api_key=").concat(apiKey).concat(
-                "&auth_token=").concat(authenticationToken);
-        
+    public Conversion convertStatus(Long jobId) throws PublishApiException {
+
+//        String call = String.format(apiUrlTemplate, String.format("conversion/%d", jobId))
+        String call = String.format("http://jgore-workstation:8080/documentconverter/conversion/%d", jobId)
+                + "?" + URLEncodedUtils.format(generateParameters("api_key", apiKey, "auth_token", authenticationToken), "UTF-8");
+
         if (LOG.isInfoEnabled()) {
-            LOG.info("API call to <".concat(call).concat(">"));
+            LOG.info("API call to <{}>", call);
         }
 
-        GetMethod getMethod = new GetMethod(call);
-        getMethod.addRequestHeader(new Header("Accept", "application/json"));
-        HttpClient client = new HttpClient();
+        HttpGet getMethod = new HttpGet(call);
+        getMethod.addHeader("Accept", "application/json");
         String output = "";
-        ConversionResponse response;
+        Conversion conversion;
         try {
-            int returnCode = client.executeMethod(getMethod);
-            output = StreamUtils.inputStreamToString(getMethod.getResponseBodyAsStream());
+            HttpResponse httpResponse = httpClient.execute(getMethod);
+            int returnCode = httpResponse.getStatusLine().getStatusCode();
+            output = StreamUtils.inputStreamToString(httpResponse.getEntity().getContent());
             if (LOG.isInfoEnabled()) {
                 LOG.info("API call response: " + output);
             }
-            response = JsonMapper.fromJson(output, ConversionResponse.class);
-            
-            if (returnCode == HttpsURLConnection.HTTP_OK) { 
-                return response.getConversion().getStatus();
+            conversion = JsonMapper.fromJson(output, Conversion.class);
+
+            if (returnCode == HttpsURLConnection.HTTP_OK) {
+                return conversion;
             } else {
-                throw new PublishApiException("Failed to get the convertation status:  " + response.getDetails());
+                throw new PublishApiException("Failed to get the convertation status:  " + output);
             }
         } catch (IOException e) {
             throw new PublishApiException("Unexpected error calling API endpoint.", e);
         } catch (JsonMapperException e) {
             throw new PublishApiException("API endpoint returned unparseable response: " + output, e);
-        } finally {
-            getMethod.releaseConnection();
         }
-        
     }
 
     private void assertAuthenticated() throws NotAuthenticatedException {
@@ -457,44 +468,42 @@ public class PublishApiClient {
         }
     }
 
-    private NameValuePair[] generateParameters(String... keysAndValues) {
+    private List<NameValuePair> generateParameters(String... keysAndValues) {
         List<NameValuePair> parameters = new ArrayList<NameValuePair>();
         for (int index = 0; index < keysAndValues.length; index += 2) {
-            parameters.add(new NameValuePair(keysAndValues[index], keysAndValues[index + 1]));
+            parameters.add(new BasicNameValuePair(keysAndValues[index], keysAndValues[index + 1]));
         }
-        return parameters.toArray(new NameValuePair[parameters.size()]);
+        return parameters;
     }
 
-    private <T> ApiResponse performApiCall(String call, NameValuePair[] urlParameters, Class<T> clazz) throws PublishApiException {
+    private <T> ApiResponse performApiCall(String call, List<NameValuePair> urlParameters, Class<T> clazz) throws PublishApiException {
         if (LOG.isInfoEnabled()) {
-            LOG.info("API call to <".concat(call).concat(">"));
+            LOG.info("API call to <{}>", call);
         }
 
-        PostMethod postMethod = new PostMethod(call);
-        postMethod.addParameters(urlParameters);
-
-        HttpClient client = new HttpClient();
+        HttpPost postMethod = new HttpPost(call);
         ApiResponse response;
         String output = "";
         try {
-            int returnCode = client.executeMethod(postMethod);
-            if (returnCode == HttpsURLConnection.HTTP_INTERNAL_ERROR) {
-                output = StreamUtils.inputStreamToString(postMethod.getResponseBodyAsStream());
-                response = new ApiResponse<ErrorResponse>(returnCode, JsonMapper.fromJson(output, ErrorResponse.class));
-            } else {
-                output = StreamUtils.inputStreamToString(postMethod.getResponseBodyAsStream());
-                response = new ApiResponse<T>(returnCode, JsonMapper.fromJson(output, clazz));
-            }
+            postMethod.setEntity(new UrlEncodedFormEntity(urlParameters, "UTF-8"));
+            HttpResponse httpResponse = httpClient.execute(postMethod);
+            output = StreamUtils.inputStreamToString(httpResponse.getEntity().getContent());
             if (LOG.isInfoEnabled()) {
                 LOG.info("API call response: " + output);
             }
+
+            int returnCode = httpResponse.getStatusLine().getStatusCode();
+            if (returnCode == HttpsURLConnection.HTTP_INTERNAL_ERROR) {
+                response = new ApiResponse<ErrorResponse>(returnCode, JsonMapper.fromJson(output, ErrorResponse.class));
+            } else {
+                response = new ApiResponse<T>(returnCode, JsonMapper.fromJson(output, clazz));
+            }
+            httpResponse.getEntity().consumeContent();
             return response;
         } catch (IOException e) {
             throw new PublishApiException("Unexpected error calling API endpoint.", e);
         } catch (JsonMapperException e) {
             throw new PublishApiException("API endpoint returned unparseable response: " + output, e);
-        } finally {
-            postMethod.releaseConnection();
         }
     }
 

@@ -2,17 +2,19 @@ package com.lulu.publish.client;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.net.URLEncoder;
 
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.HttpStatus;
-import org.apache.commons.httpclient.methods.PostMethod;
-import org.apache.commons.httpclient.methods.multipart.FilePart;
-import org.apache.commons.httpclient.methods.multipart.MultipartRequestEntity;
-import org.apache.commons.httpclient.methods.multipart.Part;
-import org.apache.commons.httpclient.methods.multipart.StringPart;
-import org.apache.commons.httpclient.params.HttpMethodParams;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpVersion;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.mime.MultipartEntity;
+import org.apache.http.entity.mime.content.ContentBody;
+import org.apache.http.entity.mime.content.FileBody;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.params.CoreProtocolPNames;
+import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,18 +29,22 @@ public class FileUploader {
 
     private String authenticationToken;
     private String uploadToken;
+    private HttpClient httpClient;
 
     /**
      * Construct with given credentials.
      *
      * @param uploadToken         token retrieved indicating upload has been authorized
      * @param authenticationToken login session token
+     * @throws IOException if SSL context could not be initialized
      */
-    public FileUploader(String uploadToken, String authenticationToken) {
+    public FileUploader(String uploadToken, String authenticationToken) throws IOException {
         this.authenticationToken = authenticationToken;
         this.uploadToken = uploadToken;
 
-        ProtocolRegistrar.registerTrustAllProtocolSocketFactory();
+        httpClient = new DefaultHttpClient();
+        httpClient.getParams().setParameter(CoreProtocolPNames.PROTOCOL_VERSION, HttpVersion.HTTP_1_1);
+        ProtocolRegistrar.registerTrustAllSslContextWithHttpClient(httpClient);
     }
 
     /**
@@ -49,33 +55,30 @@ public class FileUploader {
      * @return true if upload is successful
      * @throws IOException if upload fails because of a bad target URL or missing input files
      */
-    public boolean upload(String targetUrl, File... targetFiles) throws IOException {
-        boolean result = false;
+    public String upload(String targetUrl, File... targetFiles) throws IOException {
 
-        PostMethod filePost = new PostMethod(targetUrl);
-        filePost.getParams().setBooleanParameter(HttpMethodParams.USE_EXPECT_CONTINUE, false);
-        Collection<Part> partCollection = new ArrayList<Part>();
-        partCollection.add(new StringPart("auth_token", authenticationToken));
-        partCollection.add(new StringPart("upload_token", uploadToken));
-        for (File targetFile : targetFiles) {
+        HttpPost httpPost = new HttpPost(targetUrl
+                + "?auth_token=" + URLEncoder.encode(authenticationToken, "UTF-8")
+                + "&upload_token=" + URLEncoder.encode(uploadToken, "UTF-8"));
+        MultipartEntity multipartEntity = new MultipartEntity();
+        for (File file : targetFiles) {
             if (LOG.isInfoEnabled()) {
-                LOG.info("Uploading " + targetFile.getName() + " to " + targetUrl);
+                LOG.info("Uploading " + file.getName() + " to " + targetUrl);
             }
-            partCollection.add(new FilePart(targetFile.getName(), targetFile));
-        }
-        filePost.setRequestEntity(new MultipartRequestEntity(partCollection.toArray(new Part[partCollection.size()]), filePost.getParams()));
-
-        HttpClient client = new HttpClient();
-
-        int status = client.executeMethod(filePost);
-        if (status == HttpStatus.SC_OK) {
-            result = true;
-        }
-        if (LOG.isInfoEnabled()) {
-            LOG.info("Done uploading file");
+            ContentBody fileBody = new FileBody(file);
+            multipartEntity.addPart(file.getName(), fileBody);
         }
 
-        filePost.releaseConnection();
-        return result;
+        httpPost.setEntity(multipartEntity);
+        HttpResponse response = httpClient.execute(httpPost);
+        HttpEntity responseEntity = response.getEntity();
+        String output = "";
+        if (responseEntity != null) {
+            output = EntityUtils.toString(responseEntity);
+            responseEntity.consumeContent();
+        }
+        httpClient.getConnectionManager().shutdown();
+        return output;
     }
+
 }

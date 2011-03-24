@@ -20,9 +20,6 @@ public class PublishApiConfiguration {
 
     /**
      * Construct the client with the default configuration file.
-     *
-     * This file is "publishapi.properties" in the user's home directory.
-     * @throws java.io.IOException if a parseable properties file does not exist in the home directory
      */
     public PublishApiConfiguration() {
     }
