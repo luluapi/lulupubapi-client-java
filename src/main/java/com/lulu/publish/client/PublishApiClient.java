@@ -14,6 +14,7 @@ import javax.net.ssl.HttpsURLConnection;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
+import org.apache.http.HttpVersion;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
@@ -23,6 +24,7 @@ import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.entity.BasicHttpEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.params.CoreProtocolPNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,9 +58,9 @@ public class PublishApiClient {
     private String apiKey;
     private String email;
     private String password;
-    private String authenticationEndpoint = "https://www.jgore.lulu.com/account/endpoints/authenticator.php";
-    private String apiUrlTemplate = "https://apps.jgore.lulu.com/api/publish/v1/%s";
-    private String apiUploadUrl = "https://pubapp.jgore.lulu.com/api/publish/v1/upload";
+    private String authenticationEndpoint = "https://www.lulu.com/account/endpoints/authenticator.php";
+    private String apiUrlTemplate = "https://apps.lulu.com/api/publish/v1/%s";
+    private String apiUploadUrl = "https://pubapp.lulu.com/api/publish/v1/upload";
     private String authenticationToken;
 
     private ErrorResponse error;
@@ -100,7 +102,7 @@ public class PublishApiClient {
         password = configuration.getPassword();
 
         httpClient = new DefaultHttpClient();
-//        httpClient.getParams().setParameter(CoreProtocolPNames.PROTOCOL_VERSION, HttpVersion.HTTP_1_1);
+        httpClient.getParams().setParameter(CoreProtocolPNames.PROTOCOL_VERSION, HttpVersion.HTTP_1_1);
         ProtocolRegistrar.registerTrustAllSslContextWithHttpClient(httpClient);
     }
 
@@ -372,8 +374,7 @@ public class PublishApiClient {
     public Long convert(ConversionManifest manifest) throws PublishApiException {
         assertAuthenticated();
 
-//        String call = String.format(apiUrlTemplate, "conversion")
-        String call = "http://jgore-workstation:8080/documentconverter/conversion"
+        String call = String.format(apiUrlTemplate, "conversion")
                 + "?" + URLEncodedUtils.format(generateParameters("api_key", apiKey, "auth_token", authenticationToken), "UTF-8");
         if (LOG.isInfoEnabled()) {
             LOG.info("API call to <{}>", call);
@@ -429,8 +430,7 @@ public class PublishApiClient {
      */
     public Conversion convertStatus(Long jobId) throws PublishApiException {
 
-//        String call = String.format(apiUrlTemplate, String.format("conversion/%d", jobId))
-        String call = String.format("http://jgore-workstation:8080/documentconverter/conversion/%d", jobId)
+        String call = String.format(apiUrlTemplate, String.format("conversion/%d", jobId))
                 + "?" + URLEncodedUtils.format(generateParameters("api_key", apiKey, "auth_token", authenticationToken), "UTF-8");
 
         if (LOG.isInfoEnabled()) {
