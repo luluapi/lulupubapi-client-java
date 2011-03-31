@@ -2,6 +2,7 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,13 +12,15 @@ import com.lulu.publish.model.AccessType;
 import com.lulu.publish.model.Author;
 import com.lulu.publish.model.Bibliography;
 import com.lulu.publish.model.BindingType;
+import com.lulu.publish.model.Conversion;
+import com.lulu.publish.model.ConversionFile;
+import com.lulu.publish.model.ConversionManifest;
+import com.lulu.publish.model.ConversionStatus;
 import com.lulu.publish.model.Dimensions;
 import com.lulu.publish.model.DistributionChannel;
 import com.lulu.publish.model.FileDetails;
 import com.lulu.publish.model.FileInfo;
-import com.lulu.publish.model.JobFile;
-import com.lulu.publish.model.JobManifest;
-import com.lulu.publish.model.JobStatus;
+import com.lulu.publish.model.LuluFile;
 import com.lulu.publish.model.PaperType;
 import com.lulu.publish.model.PhysicalAttributes;
 import com.lulu.publish.model.Pricing;
@@ -26,37 +29,64 @@ import com.lulu.publish.model.Project;
 import com.lulu.publish.model.ProjectType;
 import com.lulu.publish.model.TrimSize;
 import com.lulu.publish.response.ErrorResponse;
+import com.lulu.publish.response.UploadResponse;
 
 public class Example {
 
-    public static void main(String[] args) throws IOException, PublishApiException {
+    public static void main(String[] args) throws IOException, PublishApiException, URISyntaxException, InterruptedException {
         Example example = new Example();
         example.publish();
     }
 
-    public void publish() throws IOException, PublishApiException {
+    public void publish() throws IOException, PublishApiException, URISyntaxException, InterruptedException {
         PublishApiClient client = new PublishApiClient("/path/to/configuration.properties");
 
         client.login();
 
-        File interiorFile = new File("/tmp/interior.pdf");
+        File interiorFile1 = new File("/tmp/interior.pdf");
+        File interiorFile2 = new File("/tmp/interior.pdf");
         File coverFile = new File("/tmp/cover.pdf");
-        List<File> inputFiles = new ArrayList<File>();
-        inputFiles.add(interiorFile);
-        inputFiles.add(coverFile);
-        client.upload(inputFiles);
+        
+        List<File> coverFiles = new ArrayList<File>();
+        coverFiles.add(coverFile);
+        
+        List<File> interiorFiles = new ArrayList<File>();
+        interiorFiles.add(interiorFile1);
+        interiorFiles.add(interiorFile2);
+
+        UploadResponse uploadInteriorFiles = client.upload(interiorFiles);
+        UploadResponse uploadCoverResponse = client.upload(coverFiles);
+        
+        //convertion process
+        List<LuluFile> luluFiles = uploadInteriorFiles.getUploaded();
+        Dimensions dimensions = new Dimensions(612, 792);
+        ConversionManifest manifest = new ConversionManifest();
+        manifest.setOutputDimensions(dimensions);
+        int index = 0;
+        for (LuluFile interiorFile : luluFiles) {
+            ConversionFile conversionFile = new ConversionFile();
+            conversionFile.setUri(new URI("fileId:" + interiorFile.getFileId()));
+            conversionFile.setMimeType(ConversionFile.MIME_TYPE_PDF);
+            conversionFile.setIndex(index++);
+            manifest.addConversionFiles(conversionFile);
+        }
+        manifest.setOutputFormat(ConversionFile.MIME_TYPE_PDF);
+        Long jobId = client.convert(manifest);
+        Conversion satus;
+        do {
+            Thread.sleep(1000);
+            satus = client.convertStatus(jobId);
+        } while (!ConversionStatus.COMPLETED.equals(satus.getStatus()) || !satus.getStatus().isTerminalState());
 
         FileInfo fileInfo = new FileInfo();
         List<FileDetails> contents = new ArrayList<FileDetails>();
         FileDetails content = new FileDetails();
-        content.setFilename(interiorFile.getName());
-        content.setMimetype(FileDetails.MIME_TYPE_PDF);
+        content.setFileId(satus.getOutputFileId());
         contents.add(content);
         fileInfo.setContents(contents);
         List<FileDetails> covers = new ArrayList<FileDetails>();
         FileDetails cover = new FileDetails();
-        cover.setFilename(coverFile.getName());
-        cover.setMimetype(FileDetails.MIME_TYPE_PDF);
+        cover.setFileId(uploadCoverResponse.getUploaded().get(0).getFileId());
         covers.add(cover);
         fileInfo.setCover(covers);
         
