@@ -1,6 +1,5 @@
 package com.lulu.publish.client;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -12,6 +11,7 @@ import java.util.Collection;
 import java.util.List;
 import javax.net.ssl.HttpsURLConnection;
 
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.HttpVersion;
@@ -21,7 +21,7 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URLEncodedUtils;
-import org.apache.http.entity.BasicHttpEntity;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.CoreProtocolPNames;
@@ -383,13 +383,11 @@ public class PublishApiClient {
         HttpPost httpPost = new HttpPost(call);
         httpPost.addHeader("Content-Type", "application/json");
         httpPost.addHeader("Accept", "application/json");
-        httpPost.addHeader("Chunked", "false");
 
         String output = "";
         Conversion conversion;
         try {
-            BasicHttpEntity httpEntity = new BasicHttpEntity();
-            httpEntity.setContent(new ByteArrayInputStream(serializeManifest(manifest).getBytes("UTF-8")));
+            HttpEntity httpEntity = new StringEntity(serializeManifest(manifest), "UTF-8");
             httpPost.setEntity(httpEntity);
             HttpResponse httpResponse = httpClient.execute(httpPost);
             int returnCode = httpResponse.getStatusLine().getStatusCode();
