@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import com.lulu.publish.model.Conversion;
 import com.lulu.publish.model.ConversionManifest;
 import com.lulu.publish.model.FileContext;
+import com.lulu.publish.model.Notification;
 import com.lulu.publish.model.Project;
 import com.lulu.publish.response.ApiResponse;
 import com.lulu.publish.response.AuthenticationResponse;
@@ -395,11 +396,15 @@ public class PublishApiClient {
             if (LOG.isInfoEnabled()) {
                 LOG.info("API call response: " + output);
             }
+            conversion = JsonMapper.fromJson(output, Conversion.class);
             if (returnCode == HttpsURLConnection.HTTP_OK) {
-                conversion = JsonMapper.fromJson(output, Conversion.class);
                 return conversion.getConversionId();
             } else {
-                throw new PublishApiException("Failed to convert the files of the project:  " + output);
+                StringBuilder builder = new StringBuilder();
+                for (Notification notification : conversion.getNotifications()) {
+                    builder.append(notification.getText() + ". ");
+                }
+                throw new PublishApiException("Failed to convert the files of the project:  " + builder.toString());
             }
 
         } catch (IOException e) {
@@ -451,7 +456,11 @@ public class PublishApiClient {
             if (returnCode == HttpsURLConnection.HTTP_OK) {
                 return conversion;
             } else {
-                throw new PublishApiException("Failed to get the convertation status:  " + output);
+                StringBuilder builder = new StringBuilder();
+                for (Notification notification : conversion.getNotifications()) {
+                    builder.append(notification.getText() + ". ");
+                }
+                throw new PublishApiException("Failed to get the convertation status:  " + builder.toString());
             }
         } catch (IOException e) {
             throw new PublishApiException("Unexpected error calling API endpoint.", e);
