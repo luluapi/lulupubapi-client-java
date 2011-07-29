@@ -1,46 +1,81 @@
 package com.lulu.publish.response;
 
-import java.util.List;
+import java.util.Date;
 
 import org.codehaus.jackson.annotate.JsonProperty;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.lulu.publish.model.LuluFile;
 
 /**
  *
  */
 public class UploadResponse {
 
-    private static final Logger LOG = LoggerFactory.getLogger(UploadResponse.class); // NOPMD
+    @JsonProperty("fileId")
+    private Integer fileId;
+    @JsonProperty("createdDate")
+    private Date createdDate;
+    @JsonProperty("mimeType")
+    private String mimeType;
+    @JsonProperty("name")
+    private String name;
+    @JsonProperty("size")
+    private Long size;
+    @JsonProperty("updatedDate")
+    private Date updatedDate;
 
-    @JsonProperty("written_files")
-    private List<String> writtenFiles;
-    @JsonProperty("uploaded")
-    private List<LuluFile> uploaded;
-
-    public List<LuluFile> getUploaded() {
-        return uploaded;
-    }
-
-    public void setUploaded(List<LuluFile> uploaded) {
-        this.uploaded = uploaded;
-    }
-
-    public List<String> getWrittenFiles() {
-        return writtenFiles;
-    }
-
-    public void setWrittenFiles(List<String> writtenFiles) {
-        this.writtenFiles = writtenFiles;
-    }
 
     @Override
     public String toString() {
         return "UploadResponse{"
-                + "uploaded=" + uploaded
-                + ", writtenFiles=" + writtenFiles
+                + "name=" + name
+                + "fileId=" + fileId
                 + '}';
+    }
+
+	public Integer getFileId() {
+    	return fileId;
+    }
+
+	public void setFileId(Integer fileId) {
+    	this.fileId = fileId;
+    }
+
+	public Date getCreatedDate() {
+    	return createdDate;
+    }
+
+	public void setCreatedDate(Date createdDate) {
+    	this.createdDate = createdDate;
+    }
+
+	public String getMimeType() {
+    	return mimeType;
+    }
+
+	public void setMimeType(String mimeType) {
+    	this.mimeType = mimeType;
+    }
+
+	public String getName() {
+    	return name;
+    }
+
+	public void setName(String name) {
+    	this.name = name;
+    }
+
+	public Long getSize() {
+    	return size;
+    }
+
+	public void setSize(Long size) {
+    	this.size = size;
+    }
+
+	public Date getUpdatedDate() {
+    	return updatedDate;
+    }
+
+	public void setUpdatedDate(Date updatedDate) {
+    	this.updatedDate = updatedDate;
     }
 }
