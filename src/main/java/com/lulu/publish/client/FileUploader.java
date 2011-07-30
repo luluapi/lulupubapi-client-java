@@ -28,7 +28,7 @@ public class FileUploader {
     private static final Logger LOG = LoggerFactory.getLogger(FileUploader.class); // NOPMD
 
     private String authenticationToken;
-    private String uploadToken;
+    private String apiKey;
     private HttpClient httpClient;
 
     /**
@@ -38,9 +38,9 @@ public class FileUploader {
      * @param authenticationToken login session token
      * @throws IOException if SSL context could not be initialized
      */
-    public FileUploader(String uploadToken, String authenticationToken) throws IOException {
+    public FileUploader(String authenticationToken, String apiKey) throws IOException {
         this.authenticationToken = authenticationToken;
-        this.uploadToken = uploadToken;
+        this.apiKey = apiKey;
 
         httpClient = new DefaultHttpClient();
         httpClient.getParams().setParameter(CoreProtocolPNames.PROTOCOL_VERSION, HttpVersion.HTTP_1_1);
@@ -55,21 +55,20 @@ public class FileUploader {
      * @return true if upload is successful
      * @throws IOException if upload fails because of a bad target URL or missing input files
      */
-    public String upload(String targetUrl, File... targetFiles) throws IOException {
-
-        HttpPost httpPost = new HttpPost(targetUrl
-                + "?auth_token=" + URLEncoder.encode(authenticationToken, "UTF-8")
-                + "&upload_token=" + URLEncoder.encode(uploadToken, "UTF-8"));
+    public String upload(String targetUrl, File file) throws IOException {
+    	String fullURL = targetUrl
+                         + "?auth_token=" + URLEncoder.encode(authenticationToken, "UTF-8")
+                         + "&api_key=" + URLEncoder.encode(apiKey, "UTF-8");
+        HttpPost httpPost = new HttpPost(fullURL);
         MultipartEntity multipartEntity = new MultipartEntity();
-        for (File file : targetFiles) {
-            if (LOG.isInfoEnabled()) {
-                LOG.info("Uploading " + file.getName() + " to " + targetUrl);
-            }
-            ContentBody fileBody = new FileBody(file);
-            multipartEntity.addPart(file.getName(), fileBody);
+        if (LOG.isInfoEnabled()) {
+            LOG.info("Uploading " + file.getName() + " to " + fullURL);
         }
+        ContentBody fileBody = new FileBody(file);
+        multipartEntity.addPart(file.getName(), fileBody);
 
         httpPost.setEntity(multipartEntity);
+        httpPost.setHeader("Accept", "application/json");
         HttpResponse response = httpClient.execute(httpPost);
         HttpEntity responseEntity = response.getEntity();
         String output = "";

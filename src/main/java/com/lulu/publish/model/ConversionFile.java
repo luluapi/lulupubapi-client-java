@@ -8,6 +8,7 @@ import org.codehaus.jackson.annotate.JsonIgnore;
 public class ConversionFile {
 
     public static final String MIME_TYPE_PDF = "application/pdf";
+    public static final String MIME_TYPE_EPUB = "application/epub+zip";
 
     private Long conversionFileId;
     private URI uri;

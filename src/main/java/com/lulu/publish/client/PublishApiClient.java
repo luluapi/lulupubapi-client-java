@@ -9,6 +9,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+
 import javax.net.ssl.HttpsURLConnection;
 
 import org.apache.http.HttpEntity;
@@ -41,7 +42,6 @@ import com.lulu.publish.response.ErrorResponse;
 import com.lulu.publish.response.ListResponse;
 import com.lulu.publish.response.ProjectResponse;
 import com.lulu.publish.response.UploadResponse;
-import com.lulu.publish.response.UploadTokenResponse;
 import com.lulu.publish.util.JsonMapper;
 import com.lulu.publish.util.JsonMapperException;
 import com.lulu.publish.util.StreamUtils;
@@ -61,7 +61,8 @@ public class PublishApiClient {
     private String password;
     private String authenticationEndpoint = "https://www.lulu.com/account/endpoints/authenticator.php";
     private String apiUrlTemplate = "https://apps.lulu.com/api/publish/v1/%s";
-    private String apiUploadUrl = "https://pubapp.lulu.com/api/publish/v1/upload";
+    private String apiConvertUrlTemplate = "https://apps.lulu.com/api/create/v1/%s";
+    private String apiUploadUrl = "https://transfer.lulu.com/api/create/v1/file";
     private String authenticationToken;
 
     private ErrorResponse error;
@@ -298,10 +299,12 @@ public class PublishApiClient {
      * @throws PublishApiException   if an unexpected error occurs
      * @return uploaded files
      */
-    public UploadResponse upload(Collection<File> files) throws PublishApiException, FileNotFoundException {
-        String uploadToken = requestUploadToken();
+    public UploadResponse upload(File file) throws PublishApiException, FileNotFoundException {
         try {
-            return performUpload(files, uploadToken);
+            FileUploader uploader = new FileUploader(authenticationToken, apiKey);
+            List<UploadResponse> responses = new ArrayList<UploadResponse>();
+            String response = uploader.upload(apiUploadUrl, file);	        
+            return JsonMapper.fromJson(response, UploadResponse.class);
         } catch (FileNotFoundException e) {
             throw e;
         } catch (IOException e) {
@@ -311,38 +314,16 @@ public class PublishApiClient {
         }
     }
 
-    private UploadResponse performUpload(Collection<File> files, String uploadToken) throws IOException, JsonMapperException {
-        FileUploader uploader = new FileUploader(uploadToken, authenticationToken);
-        String response = uploader.upload(apiUploadUrl, files.toArray(new File[files.size()]));
-        return JsonMapper.fromJson(response, UploadResponse.class);
-    }
-
-    private String requestUploadToken() throws PublishApiException {
-        assertAuthenticated();
-
-        ApiResponse response = performApiCall(String.format(apiUrlTemplate, "request_upload_token"),
-                generateParameters("api_key", apiKey, "auth_token", authenticationToken),
-                UploadTokenResponse.class);
-
-        if (response.isError()) {
-            error = (ErrorResponse) response.getPayload();
-            throw new PublishApiException("Failed to obtain file upload token.");
-        }
-        return ((UploadTokenResponse) response.getPayload()).getToken();
-    }
-
     /**
      * Download the indicated project file.
      *
      * @param contentId      project identifier
-     * @param fileContext    which file to download
      * @param outputLocation where to put the file
      * @throws PublishApiException if an unexpected error occurs
      */
-    public void download(int contentId, FileContext fileContext, File outputLocation) throws PublishApiException {
+    public void download(long fileId, File outputLocation) throws PublishApiException {
         assertAuthenticated();
-
-        String downloadUrl = String.format(apiUrlTemplate, "download/id/" + Integer.toString(contentId) + "/what/" + fileContext.toString())
+        String downloadUrl = apiUploadUrl + "/" + fileId + "/data"
                 + "?" + URLEncodedUtils.format(generateParameters("api_key", apiKey, "auth_token", authenticationToken), "UTF-8");
         if (LOG.isInfoEnabled()) {
             LOG.info("API call to <{}>", downloadUrl);
@@ -375,7 +356,7 @@ public class PublishApiClient {
     public Long convert(ConversionManifest manifest) throws PublishApiException {
         assertAuthenticated();
 
-        String call = String.format(apiUrlTemplate, "conversion")
+        String call = String.format(apiConvertUrlTemplate, "conversion")
                 + "?" + URLEncodedUtils.format(generateParameters("api_key", apiKey, "auth_token", authenticationToken), "UTF-8");
         if (LOG.isInfoEnabled()) {
             LOG.info("API call to <{}>", call);
@@ -433,7 +414,7 @@ public class PublishApiClient {
      */
     public Conversion convertStatus(Long jobId) throws PublishApiException {
 
-        String call = String.format(apiUrlTemplate, String.format("conversion/%d", jobId))
+        String call = String.format(apiConvertUrlTemplate, String.format("conversion/%d", jobId))
                 + "?" + URLEncodedUtils.format(generateParameters("api_key", apiKey, "auth_token", authenticationToken), "UTF-8");
 
         if (LOG.isInfoEnabled()) {

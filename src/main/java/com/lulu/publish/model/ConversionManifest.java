@@ -3,11 +3,13 @@ package com.lulu.publish.model;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import org.codehaus.jackson.annotate.JsonProperty;
+
 public class ConversionManifest {
 
     private String outputFormat;
     private Dimensions outputDimensions;
-    private String callbackUrl;
+    private Callback callback;
     private Collection<ConversionFile> conversionFiles;
 
     /**
@@ -34,12 +36,14 @@ public class ConversionManifest {
         this.outputDimensions = outputDimensions;
     }
 
-    public String getCallbackUrl() {
-        return callbackUrl;
+    @JsonProperty("callback")
+    public Callback getCallback() {
+        return callback;
     }
 
-    public void setCallbackUrl(String callbackUrl) {
-        this.callbackUrl = callbackUrl;
+    @JsonProperty("callback")
+    public void setCallbackUrl(Callback callback) {
+        this.callback = callback;
     }
 
     public Collection<ConversionFile> getConversionFiles() {
@@ -57,7 +61,7 @@ public class ConversionManifest {
     @Override
     public String toString() {
         return "ConversionManifest {" 
-                + "callbackUrl=\'" + callbackUrl 
+                + "callbackUrl=\'" + callback.getUrl()
                 + "\', conversionFiles=\'" + conversionFiles 
                 + "\', outputDimensions=\'" + outputDimensions 
                 + "\', outputFormat=\'" + outputFormat 
