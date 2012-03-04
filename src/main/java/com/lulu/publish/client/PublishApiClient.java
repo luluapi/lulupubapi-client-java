@@ -119,6 +119,15 @@ public class PublishApiClient {
     }
 
     /**
+     * Set the authentication token manually without using the login API.
+     * This should only be used if you REALLY know what you are doing.
+     * @param the new auth token.
+     */
+    public void setAuthenticationToken(String token) {
+        authenticationToken = token;
+    }
+
+    /**
      * Authenticate with the provided credentials.
      *
      * @param email    lulu account email address
