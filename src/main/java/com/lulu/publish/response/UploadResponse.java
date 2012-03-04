@@ -3,14 +3,16 @@ package com.lulu.publish.response;
 import java.util.Date;
 
 import org.codehaus.jackson.annotate.JsonProperty;
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 
 /**
  *
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class UploadResponse {
 
     @JsonProperty("fileId")
-    private Integer fileId;
+    private String fileId;
     @JsonProperty("createdDate")
     private Date createdDate;
     @JsonProperty("mimeType")
@@ -31,11 +33,11 @@ public class UploadResponse {
                 + '}';
     }
 
-	public Integer getFileId() {
+	public String getFileId() {
     	return fileId;
     }
 
-	public void setFileId(Integer fileId) {
+	public void setFileId(String fileId) {
     	this.fileId = fileId;
     }
 

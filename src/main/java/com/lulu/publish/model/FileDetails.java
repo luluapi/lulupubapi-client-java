@@ -5,17 +5,17 @@ import org.codehaus.jackson.annotate.JsonProperty;
 public class FileDetails {
     public static final String MIME_TYPE_PDF = "application/x-pdf";
 
-    private long fileId;
+    private String fileId;
     private String mimetype;
     private String filename;
 
     @JsonProperty("file_id")
-    public long getFileId() {
+    public String getFileId() {
         return fileId;
     }
 
     @JsonProperty("file_id")
-    public void setFileId(long fileId) {
+    public void setFileId(String fileId) {
         this.fileId = fileId;
     }
 
